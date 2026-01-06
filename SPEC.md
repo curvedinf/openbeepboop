@@ -233,3 +233,21 @@ for job in results:
 1.  Start Server: `openbeepboop-server start`
 2.  Start Node: `openbeepboop-node run`
 3.  Run User Script: Submits jobs via Python Lib.
+
+---
+
+## 8. Quality Assurance
+
+All components of the `openbeepboop` project must adhere to high software quality standards.
+
+*   **Unit Test Coverage**: A minimum of **90% unit test coverage** is required for all Python code, including the Server, Node Client, and User Library.
+*   **Testing Framework**: Tests should be written using `pytest`.
+*   **CI/CD**: Automated checks should enforce this coverage threshold on every pull request.
+
+---
+
+## 9. Documentation Requirements
+
+The project documentation must be comprehensive and visual to ensure ease of use.
+
+*   **README.md**: The repository's root `README.md` must include **Mermaid diagrams** that clearly explain the system architecture, data flow between components (Client, Server, Node), and the database schema interaction. This ensures that new users can grasp the distributed nature of the system at a glance.
