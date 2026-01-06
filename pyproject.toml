@@ -24,6 +24,7 @@ dependencies = [
 [project.scripts]
 openbeepboop-server = "openbeepboop.cli.server:app"
 openbeepboop-node = "openbeepboop.cli.node:app"
+openbeepboop-client = "openbeepboop.cli.client:app"
 
 [project.optional-dependencies]
 test = [

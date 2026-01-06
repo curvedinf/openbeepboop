@@ -140,3 +140,12 @@ print("Result:", result.choices[0].message.content)
 *   `setup`: Interactive wizard to create `node_config.toml`.
 *   `run`: Runs the node in a continuous loop (daemon mode).
 *   `batch`: Runs once, processes available queue items, then exits (useful for Cron).
+
+### Client CLI (`openbeepboop-client`)
+
+You can also use the CLI to interact with the queue directly.
+
+*   `submit "Prompt text" [--model <model>] [--wait]`: Submit a job.
+    *   Example: `openbeepboop-client submit "Hello world" --wait`
+*   `poll <job_id> [--wait]`: Poll for job status and result.
+    *   Example: `openbeepboop-client poll job-uuid-1234 --wait`
