@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openbeepboop"
+version = "0.1.0"
+description = "A distributed, offline-first batch LLM inference orchestration system."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "httpx",
+    "litellm",
+    "typer",
+    "pydantic>=2.0",
+    "rich",
+    "tomli; python_version < '3.11'",
+    "tomli-w",
+    "platformdirs"
+]
+
+[project.scripts]
+openbeepboop-server = "openbeepboop.cli.server:app"
+openbeepboop-node = "openbeepboop.cli.node:app"
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-asyncio"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["openbeepboop"]
+
+[tool.pytest.ini_options]
+addopts = "--cov=openbeepboop --cov-report=term-missing"
+testpaths = ["tests"]
