@@ -21,6 +21,13 @@ def test_node_client_fetch_jobs(node_config):
     assert jobs[0]["id"] == "1"
     client.client.post.assert_called_with("/internal/queue/fetch", json={"limit": 1}, headers=client.headers)
 
+def test_node_client_fetch_jobs_error(node_config):
+    client = NodeClient(node_config)
+    client.client.post = MagicMock(side_effect=Exception("Connection error"))
+
+    jobs = client.fetch_jobs(limit=1)
+    assert jobs == []
+
 @patch("openbeepboop.node.worker.completion")
 def test_node_process_job_remote(mock_completion, node_config):
     client = NodeClient(node_config)
@@ -42,14 +49,6 @@ def test_node_process_job_remote(mock_completion, node_config):
     assert result["id"] == "job-1"
     assert result["status"] == JobStatus.COMPLETED.value
     assert result["result"]["id"] == "chatcmpl-1"
-
-    # Check if correct args passed to litellm
-    # Payload model should be used if not overridden?
-    # In my code: kwargs = payload excluding messages.
-    # payload has "model": "gpt-user".
-    # config has "model": "gpt-test".
-    # I wrote: if "model" not in kwargs: kwargs["model"] = self.config.llm.model
-    # So "gpt-user" should be used.
 
     kwargs = mock_completion.call_args.kwargs
     assert kwargs["model"] == "gpt-user"
@@ -80,10 +79,6 @@ def test_node_process_job_local_override(mock_completion):
 
     kwargs = mock_completion.call_args.kwargs
     assert kwargs["api_base"] == "http://localhost:1234/v1"
-    # assert kwargs["model"] == ... # It might still be gpt-user or overridden depending on logic.
-    # Current logic: `kwargs["model"] = "openai/gpt-user"` if we forced it? No.
-    # Current logic: we only inject api_base and api_key.
-    # The payload model is passed through.
     assert "messages" in kwargs
 
 @patch("openbeepboop.node.worker.completion")
@@ -105,3 +100,47 @@ def test_submit_results(node_config):
     client.submit_results(results)
 
     client.client.post.assert_called_with("/internal/queue/submit", json=results, headers=client.headers)
+
+def test_submit_results_error(node_config):
+    client = NodeClient(node_config)
+    client.client.post = MagicMock(side_effect=Exception("Post error"))
+
+    # Should log error but not raise
+    results = [{"id": "1", "status": "COMPLETED"}]
+    client.submit_results(results)
+
+def test_submit_results_empty(node_config):
+    client = NodeClient(node_config)
+    client.client.post = MagicMock()
+
+    client.submit_results([])
+    client.client.post.assert_not_called()
+
+def test_run_once(node_config):
+    client = NodeClient(node_config)
+    client.fetch_jobs = MagicMock(return_value=[{"id": "j1"}])
+    client.process_job = MagicMock(return_value={"id": "j1", "status": "COMPLETED"})
+    client.submit_results = MagicMock()
+
+    count = client.run_once()
+    assert count == 1
+    client.process_job.assert_called_once()
+    client.submit_results.assert_called_once()
+
+@patch("openbeepboop.node.worker.time.sleep")
+def test_run_loop(mock_sleep, node_config):
+    client = NodeClient(node_config)
+
+    # Side effect to break the loop after 2 calls
+    # 1. returns 0 jobs -> sleep
+    # 2. returns 1 job -> process
+    # 3. raise exception to exit loop for test
+    client.run_once = MagicMock(side_effect=[0, 1, KeyboardInterrupt])
+
+    try:
+        client.run_loop()
+    except KeyboardInterrupt:
+        pass
+
+    mock_sleep.assert_called_once_with(5)
+    assert client.run_once.call_count == 3
