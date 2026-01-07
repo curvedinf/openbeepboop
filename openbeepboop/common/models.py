@@ -21,6 +21,7 @@ class Job(JobBase):
     status: JobStatus = JobStatus.QUEUED
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+    priority: int = 0
     result_payload: Optional[Dict[str, Any]] = None
     locked_by: Optional[str] = None
     locked_at: Optional[datetime] = None

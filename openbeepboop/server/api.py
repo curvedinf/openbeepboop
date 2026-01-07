@@ -45,15 +45,20 @@ async def verify_token(authorization: Optional[str] = Header(None)) -> Dict[str,
 
 @app.post("/v1/chat/completions", status_code=202)
 async def submit_inference(request: Dict[str, Any], identity: Dict[str, Any] = Depends(verify_token)):
+    # Extract priority if present
+    priority = request.get("priority", 0)
+    # The request payload is what we send to the LLM, so we might want to clean it or just keep it as is.
+    # For now, we keep it as is, LiteLLM usually ignores extra fields.
+
     # Create Job
-    job = Job(request_payload=request)
+    job = Job(request_payload=request, priority=priority)
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
     cursor.execute(
-        "INSERT INTO jobs (id, status, created_at, updated_at, request_payload) VALUES (?, ?, ?, ?, ?)",
-        (job.id, job.status.value, job.created_at, job.updated_at, json.dumps(job.request_payload))
+        "INSERT INTO jobs (id, status, created_at, updated_at, request_payload, priority) VALUES (?, ?, ?, ?, ?, ?)",
+        (job.id, job.status.value, job.created_at, job.updated_at, json.dumps(job.request_payload), job.priority)
     )
     conn.commit()
     conn.close()
@@ -109,7 +114,7 @@ async def fetch_jobs(body: FetchRequest, identity: Dict[str, Any] = Depends(veri
         cursor.execute("BEGIN IMMEDIATE")
 
         cursor.execute(
-            f"SELECT * FROM jobs WHERE status = ? ORDER BY created_at ASC LIMIT ?",
+            f"SELECT * FROM jobs WHERE status = ? ORDER BY priority DESC, created_at ASC LIMIT ?",
             (JobStatus.QUEUED.value, body.limit)
         )
         rows = cursor.fetchall()
