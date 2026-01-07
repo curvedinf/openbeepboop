@@ -24,6 +24,62 @@ OpenBeepBoop consists of three main components:
 *   **Flexible Deployment**: Run nodes as daemons or cron jobs.
 *   **Simple Configuration**: TOML-based config with interactive setup wizards.
 
+## Basic Operation
+
+The typical workflow involves setting up the server, configuring one or more nodes, and then using the CLI to submit jobs.
+
+### 1. Installation
+
+```bash
+pip install openbeepboop
+```
+
+### 2. Server Setup
+
+Start by setting up and running the Queue Server.
+
+```bash
+# Initialize configuration and database
+openbeepboop-server setup
+
+# Start the server (default port 8000)
+openbeepboop-server start
+```
+
+### 3. Node Setup
+
+On any machine with compute resources (or access to LLM APIs). Since nodes use a pull-based mechanism, this machine **does not** need to be reachable from the internet, it only needs to be able to reach the server.
+
+```bash
+# Configure the node (connect to server, define model)
+openbeepboop-node setup
+
+# Run the node in daemon mode
+openbeepboop-node run
+```
+
+### 4. Basic Use Case (CLI)
+
+You can interact with the system entirely via the CLI.
+
+**Submit a Job:**
+
+```bash
+# Submit a job and wait for the result
+openbeepboop-client submit "Explain quantum computing in one sentence." --wait
+```
+
+**Asynchronous Usage:**
+
+```bash
+# Submit a job (returns Job ID immediately)
+openbeepboop-client submit "Write a short poem about rust."
+# Output: Job submitted successfully. ID: job-uuid-1234
+
+# Check status later
+openbeepboop-client poll job-uuid-1234
+```
+
 ## Architecture
 
 ```mermaid
@@ -70,62 +126,6 @@ sequenceDiagram
             S-->>U: Status
         end
     end
-```
-
-## Installation
-
-```bash
-pip install openbeepboop
-```
-
-## Basic Operation
-
-The typical workflow involves setting up the server, configuring one or more nodes, and then using the CLI to submit jobs.
-
-### 1. Server Setup
-
-Start by setting up and running the Queue Server.
-
-```bash
-# Initialize configuration and database
-openbeepboop-server setup
-
-# Start the server (default port 8000)
-openbeepboop-server start
-```
-
-### 2. Node Setup
-
-On any machine with compute resources (or access to LLM APIs). Since nodes use a pull-based mechanism, this machine **does not** need to be reachable from the internet, it only needs to be able to reach the server.
-
-```bash
-# Configure the node (connect to server, define model)
-openbeepboop-node setup
-
-# Run the node in daemon mode
-openbeepboop-node run
-```
-
-### 3. Basic Use Case (CLI)
-
-You can interact with the system entirely via the CLI.
-
-**Submit a Job:**
-
-```bash
-# Submit a job and wait for the result
-openbeepboop-client submit "Explain quantum computing in one sentence." --wait
-```
-
-**Asynchronous Usage:**
-
-```bash
-# Submit a job (returns Job ID immediately)
-openbeepboop-client submit "Write a short poem about rust."
-# Output: Job submitted successfully. ID: job-uuid-1234
-
-# Check status later
-openbeepboop-client poll job-uuid-1234
 ```
 
 ## Python Library Usage
