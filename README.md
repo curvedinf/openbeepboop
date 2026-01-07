@@ -166,5 +166,6 @@ print("Result:", result.choices[0].message.content)
 
 ### Client CLI (`openbeepboop-client`)
 
+*   `setup`: Interactive wizard to create `client_config.toml`.
 *   `submit "Prompt text" [--model <model>] [--wait]`: Submit a job.
 *   `poll <job_id> [--wait]`: Poll for job status and result.

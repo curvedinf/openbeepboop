@@ -1,13 +1,54 @@
 import typer
 import json
 import os
+import tomli_w
 from typing import Optional
 from openbeepboop.client import Client
+from openbeepboop.common.config import load_client_config
 
 app = typer.Typer()
 
-def get_client(server_url: str, api_key: Optional[str]) -> Client:
-    return Client(base_url=server_url, api_key=api_key)
+def get_client(server_url: Optional[str] = None, api_key: Optional[str] = None) -> Client:
+    # Defaults
+    final_url = "http://localhost:8000"
+    final_key = None
+
+    # Try to load from config
+    try:
+        config = load_client_config()
+        final_url = config.server.url
+        final_key = config.server.api_key
+    except FileNotFoundError:
+        pass
+
+    # Overrides
+    if server_url and server_url != "http://localhost:8000":
+        final_url = server_url
+    if api_key:
+        final_key = api_key
+
+    return Client(base_url=final_url, api_key=final_key)
+
+@app.command()
+def setup():
+    """Interactive wizard to create client_config.toml."""
+    typer.echo("OpenBeepBoop Client Setup")
+
+    server_url = typer.prompt("Enter Queue Server URL", default="http://localhost:8000")
+    api_key = typer.prompt("Enter API Key (optional)", default="", show_default=False)
+
+    server_config = {"url": server_url}
+    if api_key:
+        server_config["api_key"] = api_key
+
+    config = {
+        "server": server_config
+    }
+
+    with open("client_config.toml", "wb") as f:
+        tomli_w.dump(config, f)
+
+    typer.echo("client_config.toml created.")
 
 @app.command()
 def submit(
