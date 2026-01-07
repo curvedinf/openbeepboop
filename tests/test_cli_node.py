@@ -18,8 +18,11 @@ def test_node_setup_command():
         assert "node_config.toml created" in result.stdout
 
         with open("node_config.toml", "rb") as f:
-            import tomli
-            config = tomli.load(f)
+            try:
+                import tomllib
+            except ImportError:
+                import tomli as tomllib
+            config = tomllib.load(f)
 
         assert config["server"]["url"] == "http://myserver:8000"
         assert config["server"]["api_key"] == "sk-mykey"
@@ -35,8 +38,11 @@ def test_node_setup_command_local():
         assert result.exit_code == 0
 
         with open("node_config.toml", "rb") as f:
-            import tomli
-            config = tomli.load(f)
+            try:
+                import tomllib
+            except ImportError:
+                import tomli as tomllib
+            config = tomllib.load(f)
 
         assert config["local_llm"]["enabled"] is True
         assert config["local_llm"]["port"] == 11434
