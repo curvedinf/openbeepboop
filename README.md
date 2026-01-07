@@ -40,6 +40,7 @@ Start by setting up and running the Queue Server.
 
 ```bash
 # Initialize configuration and database
+# This step generates the initial Admin API Key
 openbeepboop-server setup
 
 # Start the server (default port 8000)
@@ -52,6 +53,7 @@ On any machine with compute resources (or access to LLM APIs). Since nodes use a
 
 ```bash
 # Configure the node (connect to server, define model)
+# You will need an API Key with 'NODE' role (or the Admin key)
 openbeepboop-node setup
 
 # Run the node in daemon mode
@@ -79,6 +81,57 @@ openbeepboop-client submit "Write a short poem about rust."
 # Check status later
 openbeepboop-client poll job-uuid-1234
 ```
+
+**Example Output:**
+
+```json
+[
+  {
+    "id": "job-uuid-1234",
+    "status": "COMPLETED",
+    "completed": true,
+    "result": {
+      "id": "chatcmpl-123",
+      "object": "chat.completion",
+      "created": 1677652288,
+      "model": "gpt-3.5-turbo-0613",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "Rust is a systems programming language focused on safety and performance."
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 9,
+        "completion_tokens": 12,
+        "total_tokens": 21
+      }
+    }
+  }
+]
+```
+
+## Security & Authentication
+
+OpenBeepBoop uses a simple but secure Role-Based Access Control (RBAC) system powered by SHA-256 hashed API keys.
+
+### API Keys
+
+*   **Generation**: Keys are generated via the `openbeepboop-server setup` command (for the initial Admin key) or can be managed by admins directly in the database.
+*   **Storage**: Keys are stored in the `api_keys` table. The database **only stores the SHA-256 hash** of the key, never the plain text key.
+*   **Usage**: Clients and Nodes authenticate by sending the key in the HTTP `Authorization` header: `Bearer sk-...`.
+
+### Roles
+
+There are three distinct roles in the system:
+
+1.  **ADMIN**: Has full access to all endpoints. Created during server setup.
+2.  **NODE**: Restricted to internal queue endpoints (`/internal/queue/fetch`, `/internal/queue/submit`). Used by `openbeepboop-node` to pull work and push results.
+3.  **USER**: Restricted to public inference endpoints (`/v1/chat/completions`, `/v1/results/poll`). Used by `openbeepboop-client` and the Python library to submit jobs.
 
 ## Architecture
 
