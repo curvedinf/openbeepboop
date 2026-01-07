@@ -54,6 +54,7 @@ def setup():
 def submit(
     prompt: str = typer.Argument(..., help="The prompt to send to the LLM"),
     model: str = typer.Option("gpt-3.5-turbo", help="The model to use"),
+    priority: int = typer.Option(0, help="Job priority (higher is processed first)"),
     server_url: str = typer.Option("http://localhost:8000", help="Queue Server URL"),
     api_key: Optional[str] = typer.Option(None, envvar="OPENBEEPBOOP_API_KEY", help="API Key"),
     wait: bool = typer.Option(False, help="Wait for the result immediately")
@@ -65,17 +66,32 @@ def submit(
     try:
         job = client.chat.completions.create(
             model=model,
-            messages=[{"role": "user", "content": prompt}]
+            messages=[{"role": "user", "content": prompt}],
+            priority=priority
         )
-        typer.echo(f"Job submitted successfully. ID: {job.id}")
 
         if wait:
-            typer.echo("Waiting for result...")
+            # If waiting, we might just want the result json, or also the ID?
+            # User request: "Make the job-uuid of client submit easier to consume (json)"
+            # Usually implies when NOT waiting, but if waiting we might also want a structured output.
+            # Existing behavior for wait prints "Waiting..." then result JSON.
+
+            # Let's silence the "Job submitted" text if we want pure JSON output?
+            # Or print it to stderr?
+            # For "easier to consume", usually means stdout is pure JSON.
+
+            typer.echo(f"Job submitted. ID: {job.id}", err=True)
+            typer.echo("Waiting for result...", err=True)
+
             result = job.get(wait=True)
             if result:
                  typer.echo(json.dumps(result, indent=2))
             else:
-                 typer.echo("Job finished but no result returned (possible error).")
+                 typer.echo("Job finished but no result returned (possible error).", err=True)
+        else:
+            # Output JSON with ID
+            typer.echo(json.dumps({"id": job.id, "status": job.status}, indent=2))
+
 
     except Exception as e:
         typer.echo(f"Error submitting job: {e}", err=True)

@@ -29,9 +29,16 @@ def init_db(db_path: str = None):
         request_payload TEXT,
         result_payload TEXT,
         locked_by TEXT,
-        locked_at DATETIME
+        locked_at DATETIME,
+        priority INTEGER DEFAULT 0
     )
     """)
+
+    # Simple migration: check if priority column exists, if not add it
+    cursor.execute("PRAGMA table_info(jobs)")
+    columns = [info[1] for info in cursor.fetchall()]
+    if "priority" not in columns:
+        cursor.execute("ALTER TABLE jobs ADD COLUMN priority INTEGER DEFAULT 0")
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS api_keys (
