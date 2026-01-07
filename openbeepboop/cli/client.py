@@ -2,7 +2,7 @@ import typer
 import json
 import os
 import tomli_w
-from typing import Optional
+from typing import Optional, List
 from openbeepboop.client import Client
 from openbeepboop.common.config import load_client_config
 
@@ -83,34 +83,88 @@ def submit(
 
 @app.command()
 def poll(
-    job_id: str = typer.Argument(..., help="The Job ID to poll"),
+    job_ids: List[str] = typer.Argument(..., help="One or more Job IDs to poll"),
     server_url: str = typer.Option("http://localhost:8000", help="Queue Server URL"),
     api_key: Optional[str] = typer.Option(None, envvar="OPENBEEPBOOP_API_KEY", help="API Key"),
-    wait: bool = typer.Option(False, help="Block until the job is complete")
+    wait: bool = typer.Option(False, help="Block until the job(s) are complete (only for first job if multiple)")
 ):
     """
-    Poll the status of a job.
+    Poll the status of one or more jobs.
     """
     client = get_client(server_url, api_key)
     try:
-        # We need to construct a JobHandle manually or just use the polling method directly.
-        # The Client.jobs.poll returns a list of JobHandles.
-        jobs = client.jobs.poll([job_id])
-        if not jobs:
-            typer.echo(f"Job {job_id} not found.", err=True)
+        if not job_ids:
+            typer.echo("No job IDs provided.", err=True)
             raise typer.Exit(code=1)
 
-        job = jobs[0]
+        # Batch poll
+        jobs = client.jobs.poll(job_ids)
+        if not jobs:
+            typer.echo(f"No jobs found for IDs: {job_ids}", err=True)
+            raise typer.Exit(code=1)
 
-        if wait and not job.is_completed:
-             typer.echo("Waiting for result...")
-             result = job.get(wait=True)
-             typer.echo(json.dumps(result, indent=2))
+        # Mapping for output
+        results = []
+
+        for job in jobs:
+            job_data = {
+                "id": job.id,
+                "status": job.status,
+                "completed": job.is_completed
+            }
+            if job.is_completed:
+                job_data["result"] = job.result
+            results.append(job_data)
+
+        # If waiting is requested
+        if wait:
+             # Logic for waiting on multiple jobs is complex via CLI flags.
+             # For simplicity, we only wait on the FIRST job if multiple are passed,
+             # or we could iterate. Let's iterate but warn.
+
+             if len(job_ids) > 1:
+                 typer.echo("Warning: --wait flag specified with multiple jobs. Waiting for each sequentially.")
+
+             final_results = []
+             for job in jobs:
+                 if not job.is_completed:
+                     typer.echo(f"Waiting for job {job.id}...")
+                     res = job.get(wait=True)
+                     final_results.append({
+                         "id": job.id,
+                         "status": "COMPLETED", # It finished after wait
+                         "completed": True,
+                         "result": res
+                     })
+                 else:
+                     # Already done
+                     final_results.append({
+                         "id": job.id,
+                         "status": job.status,
+                         "completed": True,
+                         "result": job.result
+                     })
+
+             typer.echo(json.dumps(final_results, indent=2))
+
         else:
-             typer.echo(f"Status: {job.status}")
-             if job.is_completed:
-                 typer.echo("Result:")
-                 typer.echo(json.dumps(job.result, indent=2))
+            # Immediate output
+            if len(results) == 1:
+                 # Maintain backward compatible single-object output if user only asked for one?
+                 # Or consistent list output?
+                 # If we change to always list, it might break scripts expecting single object.
+                 # But standardizing on List is safer for "poll <ids>" command.
+                 # HOWEVER, the previous implementation printed specific text lines.
+                 # Let's try to be helpful.
+
+                 job = jobs[0]
+                 typer.echo(f"Status: {job.status}")
+                 if job.is_completed:
+                     typer.echo("Result:")
+                     typer.echo(json.dumps(job.result, indent=2))
+            else:
+                # Multiple jobs, output JSON list
+                typer.echo(json.dumps(results, indent=2))
 
     except Exception as e:
         typer.echo(f"Error polling job: {e}", err=True)

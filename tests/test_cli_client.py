@@ -57,8 +57,36 @@ def test_poll_command_completed(mock_client_cls):
     result = runner.invoke(app, ["poll", "job-123"])
 
     assert result.exit_code == 0
+    # Updated expectation: single output format preserved for backward compat
     assert "Status: COMPLETED" in result.stdout
     assert '"content": "response"' in result.stdout
+
+@patch("openbeepboop.cli.client.Client")
+def test_poll_command_multiple(mock_client_cls):
+    mock_client = MagicMock()
+    mock_client_cls.return_value = mock_client
+
+    job1 = MagicMock()
+    job1.id = "job-1"
+    job1.status = "COMPLETED"
+    job1.is_completed = True
+    job1.result = {"res": 1}
+
+    job2 = MagicMock()
+    job2.id = "job-2"
+    job2.status = "QUEUED"
+    job2.is_completed = False
+
+    mock_client.jobs.poll.return_value = [job1, job2]
+
+    result = runner.invoke(app, ["poll", "job-1", "job-2"])
+
+    assert result.exit_code == 0
+    # Verify both are present in output
+    assert '"id": "job-1"' in result.stdout
+    assert '"id": "job-2"' in result.stdout
+    assert '"status": "COMPLETED"' in result.stdout
+    assert '"status": "QUEUED"' in result.stdout
 
 @patch("openbeepboop.cli.client.Client")
 def test_poll_command_not_completed(mock_client_cls):
@@ -95,7 +123,7 @@ def test_poll_command_wait(mock_client_cls):
     result = runner.invoke(app, ["poll", "job-123", "--wait"])
 
     assert result.exit_code == 0
-    assert "Waiting for result..." in result.stdout
+    assert "Waiting for job job-123..." in result.stdout
     assert '"content": "final"' in result.stdout
 
 @patch("openbeepboop.cli.client.Client")
@@ -107,7 +135,7 @@ def test_poll_command_not_found(mock_client_cls):
     result = runner.invoke(app, ["poll", "job-999"])
 
     assert result.exit_code == 1
-    assert "Job job-999 not found" in result.stderr
+    assert "No jobs found" in result.stderr
 
 @patch("openbeepboop.cli.client.Client")
 def test_submit_error(mock_client_cls):

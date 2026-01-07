@@ -168,4 +168,4 @@ print("Result:", result.choices[0].message.content)
 
 *   `setup`: Interactive wizard to create `client_config.toml`.
 *   `submit "Prompt text" [--model <model>] [--wait]`: Submit a job.
-*   `poll <job_id> [--wait]`: Poll for job status and result.
+*   `poll <job_id> [<job_id>...] [--wait]`: Poll for job status and result. Accepts multiple IDs.
