@@ -6,6 +6,7 @@ OpenBeepBoop is a distributed, offline-first batch LLM inference orchestration s
 
 *   **Distributed Architecture**: Decouple the client submitting requests from the nodes executing them.
 *   **Offline-First**: Support batch processing where the client doesn't need to stay connected.
+*   **Secure Pull-Based Nodes**: Nodes do not need to be internet-accessible. They operate on a pull model, fetching jobs from the server via outbound HTTP requests. This allows you to run secure, local LLM servers (behind firewalls or NAT) without exposing them to the public internet.
 *   **Scalable**: Easily add more Node Clients to increase throughput.
 *   **Heterogeneous Compute**: Use a mix of local GPUs (via Ollama, LM Studio) and remote APIs.
 
@@ -79,7 +80,7 @@ pip install openbeepboop
 
 ## Basic Operation
 
-The typical workflow involves setting up the server, configuring one or more nodes, and then using the Python client to submit jobs.
+The typical workflow involves setting up the server, configuring one or more nodes, and then using the CLI to submit jobs.
 
 ### 1. Server Setup
 
@@ -95,7 +96,7 @@ openbeepboop-server start
 
 ### 2. Node Setup
 
-On any machine with compute resources (or access to LLM APIs):
+On any machine with compute resources (or access to LLM APIs). Since nodes use a pull-based mechanism, this machine **does not** need to be reachable from the internet, it only needs to be able to reach the server.
 
 ```bash
 # Configure the node (connect to server, define model)
@@ -105,9 +106,31 @@ openbeepboop-node setup
 openbeepboop-node run
 ```
 
-### 3. Basic Use Case
+### 3. Basic Use Case (CLI)
 
-Here is how you can submit a job from your Python script:
+You can interact with the system entirely via the CLI.
+
+**Submit a Job:**
+
+```bash
+# Submit a job and wait for the result
+openbeepboop-client submit "Explain quantum computing in one sentence." --wait
+```
+
+**Asynchronous Usage:**
+
+```bash
+# Submit a job (returns Job ID immediately)
+openbeepboop-client submit "Write a short poem about rust."
+# Output: Job submitted successfully. ID: job-uuid-1234
+
+# Check status later
+openbeepboop-client poll job-uuid-1234
+```
+
+## Python Library Usage
+
+For integration into Python applications, use the provided client library.
 
 ```python
 from openbeepboop import Client
@@ -143,9 +166,5 @@ print("Result:", result.choices[0].message.content)
 
 ### Client CLI (`openbeepboop-client`)
 
-You can also use the CLI to interact with the queue directly.
-
 *   `submit "Prompt text" [--model <model>] [--wait]`: Submit a job.
-    *   Example: `openbeepboop-client submit "Hello world" --wait`
 *   `poll <job_id> [--wait]`: Poll for job status and result.
-    *   Example: `openbeepboop-client poll job-uuid-1234 --wait`
